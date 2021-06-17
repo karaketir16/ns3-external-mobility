@@ -71,13 +71,13 @@ private:
   virtual void DoSetPosition (const Vector &position);
   virtual Vector DoGetVelocity (void) const;
 
+  void KILL_ME();
+
   void UdpServerThread();
   SystemThread* st3;
-  static std::vector<SystemMutex*> m_mutexes;
 
   std::atomic_flag kill_t;
 
-  int index;
   int sockfd;
   Protocol protocol;
   struct sockaddr_in servaddr, cliaddr;

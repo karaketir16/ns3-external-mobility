@@ -44,7 +44,13 @@ TypeId ExternalMobilityModel::GetTypeId (void)
     return tid;
 }
 
-std::vector<SystemMutex*> ExternalMobilityModel::m_mutexes;
+void
+ExternalMobilityModel::KILL_ME(){
+    kill_t.test_and_set();
+    st3->Join();
+    std::cout <<"Rest in peace " << st3 << std::endl;
+    delete st3;
+}
 
 ExternalMobilityModel::ExternalMobilityModel ()
 {
@@ -71,16 +77,12 @@ ExternalMobilityModel::ExternalMobilityModel ()
         exit(EXIT_FAILURE);
     }
 
-    // Create a mutex for this node and set index
-    static int idx = 0;
-    m_mutexes.push_back(new SystemMutex()); // make sure deleted
-    index = idx++;
-
-    kill_t.clear();
 
     // Create and start udp thread
     st3 = new SystemThread (
                 MakeCallback (&ExternalMobilityModel::UdpServerThread, this));
+
+    Simulator::ScheduleDestroy(&ExternalMobilityModel::KILL_ME, this);
     st3->Start();
 }
 
@@ -88,6 +90,14 @@ void ExternalMobilityModel::UdpServerThread () {
     socklen_t len;
     int n;
     while (true) {
+        if(kill_t.test()){
+            break;
+        }
+        Simulator::Schedule(MilliSeconds(10),&ExternalMobilityModel::SetPosition, this, m_position);
+
+//        Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, m_position);
+        usleep(1000 * 5);
+        continue;
 
         len = sizeof(cliaddr);  //len is value/resuslt
 
@@ -108,11 +118,8 @@ void ExternalMobilityModel::UdpServerThread () {
         uint8_t tst;
         if( (tst = protocol.decode(n)) == PackageType::Position){
 
-            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
-
-        } else if (tst == PackageType::Kill_Thread){
-            std::cout << "Received Kill " << this <<" "<<index << std::endl << std::flush;
-            break;
+//            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, m_position);
+//            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
         } else {
             NS_ASSERT_MSG(false, "NOT POSSIBLE");
         }
@@ -122,42 +129,19 @@ void ExternalMobilityModel::UdpServerThread () {
 
 ExternalMobilityModel::~ExternalMobilityModel ()
 {
-//    m_mutexes[index]->Lock();
-
-    //    Protocol kill_t;
-    //    sendto(sockfd, (void *)kill_t.buffer, kill_t.encode(PackageType::Kill_Thread),
-    //        0, (const struct sockaddr *) &servaddr,
-    //           sizeof (servaddr));
-
-
-
-//    kill_t.test_and_set();
-//    st3->Join();
-
-    // give memory back
-        delete m_mutexes[index];
 }
 
 
 Vector
 ExternalMobilityModel::DoGetPosition (void) const
 {
-    //std::cout << this <<" getpos " << Simulator::Now().GetSeconds() << std::endl;
-
-    m_mutexes[index]->Lock();
-    auto temp = m_position;
-    m_mutexes[index]->Unlock();
-
-    return temp;
+    return m_position;
 }
 
 void 
 ExternalMobilityModel::DoSetPosition (const Vector &position)
 {
-    m_mutexes[index]->Lock();
     m_position = position;
-    m_mutexes[index]->Unlock();
-
     NotifyCourseChange ();
 }
 
