@@ -37,11 +37,11 @@ NS_OBJECT_ENSURE_REGISTERED (ExternalMobilityModel);
 
 TypeId ExternalMobilityModel::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::ExternalMobilityModel")
-    .SetParent<MobilityModel> ()
-    .SetGroupName ("Mobility")
-    .AddConstructor<ExternalMobilityModel> ();
-  return tid;
+    static TypeId tid = TypeId ("ns3::ExternalMobilityModel")
+            .SetParent<MobilityModel> ()
+            .SetGroupName ("Mobility")
+            .AddConstructor<ExternalMobilityModel> ();
+    return tid;
 }
 
 std::vector<SystemMutex*> ExternalMobilityModel::m_mutexes;
@@ -65,7 +65,7 @@ ExternalMobilityModel::ExternalMobilityModel ()
 
     // Bind the socket with the server address
     if ( bind(sockfd, (const struct sockaddr *)&servaddr,
-            sizeof(servaddr)) < 0 )
+              sizeof(servaddr)) < 0 )
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
@@ -80,7 +80,7 @@ ExternalMobilityModel::ExternalMobilityModel ()
 
     // Create and start udp thread
     st3 = new SystemThread (
-        MakeCallback (&ExternalMobilityModel::UdpServerThread, this));
+                MakeCallback (&ExternalMobilityModel::UdpServerThread, this));
     st3->Start();
 }
 
@@ -91,87 +91,58 @@ void ExternalMobilityModel::UdpServerThread () {
 
         len = sizeof(cliaddr);  //len is value/resuslt
 
-        fd_set set;
-        struct timeval timeout;
-
-
-        /* Initialize the file descriptor set. */
-        FD_ZERO (&set);
-        FD_SET (sockfd, &set);
-
-        /* Initialize the timeout data structure. */
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0000;
-
-        /* select returns 0 if timeout, 1 if input available, -1 if error. */
-        int res =  (select (FD_SETSIZE,
-                                           &set, NULL, NULL,
-                                           &timeout));
-
-        if(res == 1){
-            n = recvfrom(sockfd, (char *)protocol.buffer, MAX_PKG_LEN,
-                        MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-                        &len);
-            if(n < 0){
-                std::cout << "Read Val: " << n << std::endl << std::flush;
-                NS_ASSERT_MSG(false, "what is it?");
-            }
-
-            std::cout << "Received from: " << inet_ntoa(cliaddr.sin_addr) <<":" << (int) ntohs(cliaddr.sin_port) <<" _ myport: " << (int) ntohs(servaddr.sin_port) << std::endl;
-    //        sendto(sockfd, (const char *)protocol.buffer, n,
-    //            0, (const struct sockaddr *) &cliaddr,
-    //                len);
-    //        std::cout << "Echo message sent." << std::endl;
-
-            uint8_t tst;
-            if( (tst = protocol.decode(n)) == PackageType::Position){
-                auto temp = m_position;
-                temp.x = protocol.x;
-                temp.y = protocol.y;
-                temp.z = protocol.z;
-                DoSetPosition(temp);
-            } else if (tst == PackageType::Kill_Thread){
-                std::cout << "Received Kill " << this <<" "<<index << std::endl << std::flush;
-                break;
-            } else {
-                NS_ASSERT_MSG(false, "NOT POSSIBLE");
-            }
-
-        } else if(res == 0){
-            std::cout << "TimeOUT" << std::endl << std::flush;
-            if(kill_t.test()){
-                break;
-            }
-        } else {
-            std::cout << "-----Err---- : " << res << std::endl << std::flush;
-//            NS_ASSERT_MSG(false, "TEST");
+        n = recvfrom(sockfd, (char *)protocol.buffer, MAX_PKG_LEN,
+                     MSG_WAITALL, ( struct sockaddr *) &cliaddr,
+                     &len);
+        if(n < 0){
+            std::cout << "Read Val: " << n << std::endl << std::flush;
+            NS_ASSERT_MSG(false, "what is it?");
         }
+
+        //std::cout << "Received from: " << inet_ntoa(cliaddr.sin_addr) <<":" << (int) ntohs(cliaddr.sin_port) <<" _ myport: " << (int) ntohs(servaddr.sin_port) << std::endl;
+        //        sendto(sockfd, (const char *)protocol.buffer, n,
+        //            0, (const struct sockaddr *) &cliaddr,
+        //                len);
+        //        std::cout << "Echo message sent." << std::endl;
+
+        uint8_t tst;
+        if( (tst = protocol.decode(n)) == PackageType::Position){
+
+            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+
+        } else if (tst == PackageType::Kill_Thread){
+            std::cout << "Received Kill " << this <<" "<<index << std::endl << std::flush;
+            break;
+        } else {
+            NS_ASSERT_MSG(false, "NOT POSSIBLE");
+        }
+
     }
 }
 
 ExternalMobilityModel::~ExternalMobilityModel ()
 {
-    m_mutexes[index]->Lock();
+//    m_mutexes[index]->Lock();
 
-//    Protocol kill_t;
-//    sendto(sockfd, (void *)kill_t.buffer, kill_t.encode(PackageType::Kill_Thread),
-//        0, (const struct sockaddr *) &servaddr,
-//           sizeof (servaddr));
+    //    Protocol kill_t;
+    //    sendto(sockfd, (void *)kill_t.buffer, kill_t.encode(PackageType::Kill_Thread),
+    //        0, (const struct sockaddr *) &servaddr,
+    //           sizeof (servaddr));
 
 
 
-    kill_t.test_and_set();
-    st3->Join();
+//    kill_t.test_and_set();
+//    st3->Join();
 
     // give memory back
-//    delete m_mutexes[index];
+        delete m_mutexes[index];
 }
 
 
 Vector
 ExternalMobilityModel::DoGetPosition (void) const
 {
-    std::cout << this <<" getpos " << Simulator::Now().GetSeconds() << std::endl;
+    //std::cout << this <<" getpos " << Simulator::Now().GetSeconds() << std::endl;
 
     m_mutexes[index]->Lock();
     auto temp = m_position;

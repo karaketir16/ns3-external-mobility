@@ -28,23 +28,19 @@
 
 using namespace ns3;
 
-void handler (int &arg0, int &arg1, NodeContainer &nodes)
-{
-    std::cout << "handler called with argument arg0=" << arg0 << " and\
-        arg1=" << arg1 << std::endl;
+uint64_t timeSinceEpochMillisec() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
 
-  for (NodeContainer::Iterator j = nodes.Begin ();
-       j != nodes.End (); ++j)
-    {
-      Ptr<Node> object = *j;
-      Ptr<MobilityModel> position = object->GetObject<MobilityModel> ();
-      NS_ASSERT (position != 0);
-      Vector pos = position->GetPosition ();
-      position->SetPosition(Vector(1,2,3));
-      std::cout << "x=" << pos.x << ", y=" << pos.y << ", z=" << pos.z << std::endl;
-    }
+uint64_t start;
 
-Simulator::Schedule(Seconds(1), &handler, 10, 5, nodes);
+void test(){
+    std::cout   << "Simulator Time: "<< Simulator::Now().GetMilliSeconds()
+                << " Differance Between Real-Simulation Time(ms): "
+                << timeSinceEpochMillisec() - Simulator::Now().GetMilliSeconds()  - start << std::endl;
+
+    Simulator::Schedule (MilliSeconds(100), &test);
 }
 
 
@@ -58,7 +54,7 @@ int main (int argc, char *argv[])
                      StringValue ("ns3::RealtimeSimulatorImpl"));
   
   NodeContainer sta;
-  sta.Create (10);
+  sta.Create (50);
   MobilityHelper mobility;
 //  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
 //                                 "MinX", DoubleValue (1.0),
@@ -108,10 +104,11 @@ int main (int argc, char *argv[])
   AsciiTraceHelper ascii;
   MobilityHelper::EnableAsciiAll (ascii.CreateFileStream ("mobility-trace-example.mob"));
 
-//  Simulator::Schedule(Seconds(1), &handler, 10, 5, sta);
+  Simulator::Schedule(MilliSeconds(100), &test);
 
-  Simulator::Stop (Seconds (4.0));
-  AnimationInterface anim ("animation_12.xml");
+  Simulator::Stop (Seconds (100.0));
+  AnimationInterface anim ("animation_13.xml");
+  start = timeSinceEpochMillisec();
   Simulator::Run ();
   Simulator::Destroy ();
   return 0;
