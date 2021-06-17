@@ -93,37 +93,45 @@ void ExternalMobilityModel::UdpServerThread () {
         if(kill_t.test()){
             break;
         }
-        Simulator::Schedule(MilliSeconds(10),&ExternalMobilityModel::SetPosition, this, m_position);
 
-//        Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, m_position);
-        usleep(1000 * 5);
-        continue;
+        fd_set set;
+        struct timeval timeout;
 
-        len = sizeof(cliaddr);  //len is value/resuslt
 
-        n = recvfrom(sockfd, (char *)protocol.buffer, MAX_PKG_LEN,
-                     MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-                     &len);
-        if(n < 0){
-            std::cout << "Read Val: " << n << std::endl << std::flush;
-            NS_ASSERT_MSG(false, "what is it?");
+        /* Initialize the file descriptor set. */
+        FD_ZERO (&set);
+        FD_SET (sockfd, &set);
+
+        /* Initialize the timeout data structure. */
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 1000 * 500;
+
+        /* select returns 0 if timeout, 1 if input available, -1 if error. */
+        int res =  (select (FD_SETSIZE,
+                            &set, NULL, NULL,
+                            &timeout));
+
+        if(res == 1){
+
+            len = sizeof(cliaddr);  //len is value/resuslt
+
+            n = recvfrom(sockfd, (char *)protocol.buffer, MAX_PKG_LEN,
+                         MSG_WAITALL, ( struct sockaddr *) &cliaddr,
+                         &len);
+            if(n < 0){
+                std::cout << "Read Val: " << n << std::endl << std::flush;
+                NS_ASSERT_MSG(false, "what is it?");
+            }
+
+            uint8_t tst;
+            if( (tst = protocol.decode(n)) == PackageType::Position){
+
+                Simulator::Schedule(MilliSeconds(10),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+                //            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+            } else {
+                NS_ASSERT_MSG(false, "NOT POSSIBLE");
+            }
         }
-
-        //std::cout << "Received from: " << inet_ntoa(cliaddr.sin_addr) <<":" << (int) ntohs(cliaddr.sin_port) <<" _ myport: " << (int) ntohs(servaddr.sin_port) << std::endl;
-        //        sendto(sockfd, (const char *)protocol.buffer, n,
-        //            0, (const struct sockaddr *) &cliaddr,
-        //                len);
-        //        std::cout << "Echo message sent." << std::endl;
-
-        uint8_t tst;
-        if( (tst = protocol.decode(n)) == PackageType::Position){
-
-//            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, m_position);
-//            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
-        } else {
-            NS_ASSERT_MSG(false, "NOT POSSIBLE");
-        }
-
     }
 }
 

@@ -71,7 +71,7 @@ int main (int argc, char *argv[])
   GlobalValue::Bind ("SimulatorImplementationType",
                      StringValue ("ns3::RealtimeSimulatorImpl"));
 
-  int number_of_nodes = 40;
+  int number_of_nodes = 12;
 
   NodeContainer c;
   c.Create (number_of_nodes); //20 wireless nodes
@@ -123,7 +123,7 @@ wifi.SetStandard (WIFI_STANDARD_80211b);
 
 //  OlsrHelper routing;
   DsdvHelper routing;
-    routing.Set("PeriodicUpdateInterval", TimeValue(MilliSeconds(250)));
+    routing.Set("PeriodicUpdateInterval", TimeValue(MilliSeconds(500)));
 
   InternetStackHelper internet;
   internet.SetRoutingHelper (routing); // has effect on the next Install ()
@@ -185,18 +185,18 @@ mobility.Install (c);
 
   ApplicationContainer serverApps = echoServer.Install (c.Get(0));
   serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (30.0));
+  serverApps.Stop (Seconds (20.0));
 
  UdpEchoClientHelper echoClient (cInterfaces.GetAddress(0), 9);
   echoClient.SetAttribute ("MaxPackets", UintegerValue (10000));
-  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (100.0)));
+  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (100)));
   echoClient.SetAttribute ("PacketSize", UintegerValue (100));
 
   ApplicationContainer clientApps[number_of_nodes - 1];
   for(int i = 0; i < number_of_nodes - 1; i++){
       clientApps[i] = echoClient.Install (c.Get(i + 1));
       clientApps[i].Start (Seconds (2.0));
-      clientApps[i].Stop (Seconds (30.0));
+      clientApps[i].Stop (Seconds (20.0));
   }
 
 //wifiPhy.EnablePcapAll ("Fanet3DExternal"); //Packet Capture.
@@ -212,7 +212,7 @@ anim.SetMaxPktsPerTraceFile(99999999999999);
 
 Simulator::Schedule(MilliSeconds(100), &test);
 
-  Simulator::Stop (Seconds (5.0));
+  Simulator::Stop (Seconds (20.0));
   start = timeSinceEpochMillisec();
   Simulator::Run ();
   Simulator::Destroy ();
