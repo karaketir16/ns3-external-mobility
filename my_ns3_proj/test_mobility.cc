@@ -46,6 +46,7 @@
 #include "simulation-control.h"
 
 using namespace ns3;
+NS_LOG_COMPONENT_DEFINE ("ExternalMobiltyTest");
 
 uint64_t timeSinceEpochMillisec() {
     using namespace std::chrono;
@@ -53,7 +54,6 @@ uint64_t timeSinceEpochMillisec() {
 }
 
 uint64_t start_time;
-
 uint64_t receiveCountTotal = 0;
 
 void test(){
@@ -80,43 +80,48 @@ void ReceivePacket (Ptr<Socket> socket)
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Time pktInterval )
 {
-
     socket->Send (Create<Packet> (pktSize));
     Simulator::Schedule (pktInterval, &GenerateTraffic,
                          socket, pktSize, pktInterval);
 
 }
 
-
-
-using namespace ns3;
-NS_LOG_COMPONENT_DEFINE ("Mob");
-
-
-
 int main (int argc, char *argv[])
 {
-    CommandLine cmd;
+    std::string phyMode ("DsssRate11Mbps");
+    std::string saveFile ("DisabledFeedback");
+    uint32_t packetSize = 100; // bytes
+    uint32_t interval = 100; // milliseconds
+    bool feedback = false;
+    double txp = 7.5; // dbm
+    double simTime = 20; // simulation time
+
+    CommandLine cmd (__FILE__);
+    cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
+    cmd.AddValue ("saveFile", "Save File name", saveFile);
+    cmd.AddValue ("txp", "transmit power dBm", txp);
+    cmd.AddValue ("packetSize", "size of application packet sent", packetSize);
+    cmd.AddValue ("interval", "interval (milliseconds) between packets", interval);
+    cmd.AddValue ("feedback", "enable feedback", feedback);
+    cmd.AddValue ("simTime", "simulation time(seconds)", simTime);
+
     cmd.Parse (argc, argv);
+    Time intervalTime = MilliSeconds(interval);
 
     GlobalValue::Bind ("SimulatorImplementationType",
                        StringValue ("ns3::RealtimeSimulatorImpl"));
 
     int number_of_nodes = 12;
 
-    NodeContainer c;
-    c.Create (number_of_nodes); //20 wireless nodes
+    NodeContainer server;
+    server.Create(1);
+
+    NodeContainer clients;
+    clients.Create (number_of_nodes - 1);
 
     WifiHelper wifi;
-    //wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
     wifi.SetStandard (WIFI_STANDARD_80211b);
-    //80211a, 80211b, 80211n, 2.4g and 5G, 80211ac, 80211ax is also supported.80211p (VANETs, WAVE)
 
-
-    std::string phyMode = "DsssRate11Mbps";
-    double txp = 7.5; // dbm
-
-    // Add a mac and disable rate control
     WifiMacHelper wifiMac;
     wifiMac.SetType ("ns3::AdhocWifiMac");
     wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
@@ -125,196 +130,85 @@ int main (int argc, char *argv[])
 
 
 
-    /** Wifi PHY **/
-    /***************************************************************************/
+    // PHY
     YansWifiPhyHelper wifiPhy;
 
     wifiPhy.Set ("TxPowerStart",DoubleValue (txp));
     wifiPhy.Set ("TxPowerEnd", DoubleValue (txp));
 
-    /** wifi channel **/
+    // Channel
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
     wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
     wifiPhy.SetChannel (wifiChannel.Create ());
-    NetDeviceContainer cDevices = wifi.Install (wifiPhy, wifiMac, c);
-    //
-    NS_LOG_INFO ("Enabling AODV routing on all backbone nodes");
-//      AodvHelper routing;
-    //  routing.Set("ActiveRouteTimeout", TimeValue(MilliSeconds(100)));
-    //AODV protocol is being using FANETs.
 
-    //  OlsrHelper routing;
+
+    NetDeviceContainer sDevice = wifi.Install (wifiPhy, wifiMac, server);
+    NetDeviceContainer cDevices = wifi.Install (wifiPhy, wifiMac, clients);
+
+
     DsdvHelper routing;
     routing.Set("PeriodicUpdateInterval", TimeValue(MilliSeconds(250)));
 
     InternetStackHelper internet;
-    internet.SetRoutingHelper (routing); // has effect on the next Install ()
-    internet.Install (c);
+    internet.SetRoutingHelper (routing);
+    internet.Install(server);
+    internet.Install (clients);
+
 
     //
-    // Assign IPv4 addresses to the device drivers (actually to the associated
-    // IPv4 interfaces) we just created.
+    // Assign IPv4 addresses
     //
     Ipv4AddressHelper ipAddrs;
     ipAddrs.SetBase ("192.168.0.0", "255.255.255.0");
+
+    Ipv4InterfaceContainer sInterface;
+    sInterface=ipAddrs.Assign (sDevice);
+
     Ipv4InterfaceContainer cInterfaces;
     cInterfaces=ipAddrs.Assign (cDevices);
 
     Config::Set("/NodeList/*/$ns3::Ipv4L3Protocol/InterfaceList/*/ArpCache/DeadTimeout", TimeValue(MilliSeconds(100)));
     Config::Set("/NodeList/*/$ns3::Ipv4L3Protocol/InterfaceList/*/ArpCache/WaitReplyTimeout", TimeValue(MilliSeconds(10)));
 
-
-    /*
-//Mobility Model - 2D
-MobilityHelper mobility;
-
-mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-  "MinX", DoubleValue (0.0),
-  "MinY", DoubleValue (0.0),
-  "DeltaX", DoubleValue (5.0),
-  "DeltaY", DoubleValue (10.0),
-  "GridWidth", UintegerValue (3),
-  "LayoutType", StringValue ("RowFirst"));
-
-mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",  "Bounds", RectangleValue (Rectangle (-100, 100, -100, 100)));
-mobility.Install (c);
- */
-
-    //Mobility Model -3D
-    //    MobilityHelper mobility;
-    //    mobility.SetMobilityModel ("ns3::GaussMarkovMobilityModel",
-    //    "Bounds", BoxValue (Box (0, 100, 0, 100, 0, 100)),
-    //    "TimeStep", TimeValue (Seconds (0.5)),
-    //    "Alpha", DoubleValue (0.85),
-    //    "MeanVelocity", StringValue ("ns3::UniformRandomVariable[Min=800|Max=1200]"),
-    //    "MeanDirection", StringValue ("ns3::UniformRandomVariable[Min=0|Max=6.283185307]"),
-    //    "MeanPitch", StringValue ("ns3::UniformRandomVariable[Min=0.05|Max=0.05]"),
-    //    "NormalVelocity", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
-    //    "NormalDirection", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
-    //    "NormalPitch", StringValue ("ns3::NormalRandomVariable[Mean=0.0|Variance=0.02|Bound=0.04]"));
-
     //Mobility Model External
     MobilityHelper mobility;
     mobility.SetMobilityModel ("ns3::ExternalMobilityModel");
 
     mobility.SetPositionAllocator ("ns3::RandomBoxPositionAllocator",
-                                   "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=100]"),
-                                   "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=100]"),
-                                   "Z", StringValue ("ns3::UniformRandomVariable[Min=0|Max=100]"));
-    mobility.Install (c);
+                                   "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"),
+                                   "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"),
+                                   "Z", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
+    mobility.Install(server);
+    mobility.Install (clients);
 
     TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-    Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (0), tid);
+    Ptr<Socket> recvSink = Socket::CreateSocket (server.Get (0), tid);
     InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 9);
     recvSink->Bind (local);
     recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
     std::vector<Ptr<Socket>> sockets;
 
-    int packetSize = 100;
-    Time interPacketInterval = MilliSeconds(100) ;
-
     for(int i = 0; i < number_of_nodes - 1; i++){
-        Ptr<Socket> source = Socket::CreateSocket (c.Get (i + 1), tid);
+        Ptr<Socket> source = Socket::CreateSocket (clients.Get (i), tid);
         sockets.push_back(source);
-        InetSocketAddress remote = InetSocketAddress(cInterfaces.GetAddress(0), 9);
+        InetSocketAddress remote = InetSocketAddress(sInterface.GetAddress(0), 9);
         source->Connect (remote);
         Simulator::Schedule(Seconds (1.0), &GenerateTraffic,
-                            source, packetSize, interPacketInterval);
+                            source, packetSize, intervalTime);
     }
 
+    wifiPhy.EnablePcap(saveFile, server);
 
-    //Config::ConnectWithoutContext("/NodeList/*/ApplicationList/*/$ns3::PacketSink/Rx", MakeCallback(&RcvPacket));
-
-    //  NS_ASSERT_MSG(false, "Not problem yet");
-
-    //wifiPhy.EnablePcapAll ("Fanet3DExternal"); //Packet Capture.
-    wifiPhy.EnablePcapAll ("Fanet3DTest2"); //Packet Capture.
-    //Network Animation using NetAnim.
-    //AnimationInterface anim("Fanet3DExternal.xml");
-    AnimationInterface anim("Fanet3DTest2.xml");
+    AnimationInterface anim(saveFile + ".xml");
     anim.SetMaxPktsPerTraceFile(99999999999999);
-    //Ascii Trace Metrics can be processed using Tracemetrics Software.
-    //AsciiTraceHelper ascii;
-    //wifiPhy.EnableAsciiAll(ascii.CreateFileStream("Fanet3DExternal.tr"));
-    //wifiPhy.EnableAsciiAll(ascii.CreateFileStream("Fanet3DTest.tr"));
 
     Simulator::Schedule(MilliSeconds(100), &test);
 
-    SimulationControl control(&receiveCountTotal);
+    SimulationControl control(&receiveCountTotal, feedback);
 
-    Simulator::Stop (Seconds (20.0));
-    start_time = timeSinceEpochMillisec();
-    Simulator::Run ();
-    Simulator::Destroy ();
-    return 0;
-}
-
-
-int main_first (int argc, char *argv[])
-{
-    CommandLine cmd (__FILE__);
-    cmd.Parse (argc, argv);
-
-    GlobalValue::Bind ("SimulatorImplementationType",
-                       StringValue ("ns3::RealtimeSimulatorImpl"));
-
-    NodeContainer sta;
-    sta.Create (50);
-    MobilityHelper mobility;
-    //  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-    //                                 "MinX", DoubleValue (1.0),
-    //                                 "MinY", DoubleValue (1.0),
-    //                                 "DeltaX", DoubleValue (5.0),
-    //                                 "DeltaY", DoubleValue (5.0),
-    //                                 "GridWidth", UintegerValue (3),
-    //                                 "LayoutType", StringValue ("RowFirst"));
-
-    mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                   "X", StringValue
-                                   ("ns3::UniformRandomVariable[Min=0.0|Max=20.0]"),
-                                   "Y", StringValue
-                                   ("ns3::UniformRandomVariable[Min=0.0|Max=20.0]"));
-
-    //  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-    //                             "Mode", StringValue ("Time"),
-    //                             "Time", StringValue ("2s"),
-    //                             "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
-    //                             "Bounds", RectangleValue (Rectangle (0.0, 20.0, 0.0, 20.0)));
-
-
-    mobility.SetMobilityModel ("ns3::ExternalMobilityModel");
-
-    //    mobility.
-
-    //  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-
-    mobility.Install (sta);
-    // Set mobility random number streams to fixed values
-    mobility.AssignStreams (sta, 0);
-    for (NodeContainer::Iterator j = sta.Begin ();
-         j != sta.End (); ++j)
-    {
-        Ptr<Node> object = *j;
-        Ptr<ExternalMobilityModel> position = DynamicCast<ExternalMobilityModel>(object->GetObject<MobilityModel> ());
-        NS_ASSERT (position != 0);
-        Vector pos = position->GetPosition ();
-        //      position->SetPosition(Vector(1000,1000,0));
-        //      Vector vel = position->GetVelocity();
-        //      position->SetVelocity(Vector(10,10,0));
-        std::cout << "x=" << pos.x << ", y=" << pos.y << ", z=" << pos.z << std::endl;
-        //      std::cout << "x=" << pos.x << ", y=" << pos.y << ", z=" << pos.z << std::endl;
-    }
-
-
-    AsciiTraceHelper ascii;
-    MobilityHelper::EnableAsciiAll (ascii.CreateFileStream ("mobility-trace-example.mob"));
-
-    Simulator::Schedule(MilliSeconds(100), &test);
-
-    Simulator::Stop (Seconds (100.0));
-    AnimationInterface anim ("animation_13.xml");
+    Simulator::Stop (Seconds (simTime));
     start_time = timeSinceEpochMillisec();
     Simulator::Run ();
     Simulator::Destroy ();

@@ -2,7 +2,7 @@
 
 using namespace ns3;
 
-SimulationControl::SimulationControl(uint64_t *watch, uint16_t port_src, uint16_t port_dest)
+SimulationControl::SimulationControl(uint64_t *watch, bool feedback, uint16_t port_src, uint16_t port_dest)
 {
     udp_socket = new UDPSocketHelper();
     udp_socket->Create();
@@ -24,7 +24,8 @@ SimulationControl::SimulationControl(uint64_t *watch, uint16_t port_src, uint16_
         goto back;
     }
 
-    Simulator::Schedule(MilliSeconds(1000), &SimulationControl::sendInfo, this, watch);
+    if(feedback)
+        Simulator::Schedule(MilliSeconds(1000), &SimulationControl::sendInfo, this, watch);
     Simulator::ScheduleDestroy(&SimulationControl::sendEnd, this);
 }
 

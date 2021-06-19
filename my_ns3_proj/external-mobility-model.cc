@@ -54,7 +54,7 @@ ExternalMobilityModel::thread_safe_stop(){
 
 ExternalMobilityModel::ExternalMobilityModel ()
 {
-    static unsigned PORT = 7070;
+    static unsigned PORT = NS3_NODE_PORT_BASE;
 
     udp_port = PORT++;
 
@@ -71,22 +71,23 @@ void ExternalMobilityModel::UdpServerThread () {
 
     udp_sock = new UDPSocketHelper();
 
-    udp_sock->Create();
+    //SOMEHOE NS_ASSERT_MSG(func(), "msg") not works
+    if( ! udp_sock->Create()){
+        NS_ASSERT_MSG(false, "PORT create fail");
+    }
 
-    udp_sock->Bind(udp_port);
+    if( ! udp_sock->Bind(udp_port)) {
+        NS_ASSERT_MSG(false, "PORT bind fail");
+    }
 
     while (true) {
         if(kill_thread_flag.test()){
             break;
         }
-
         int n = udp_sock->RecvNotBlock((char *)protocol.buffer, 500);
-//        int n = udp_sock.RecvBlock((char *)protocol.buffer);
-//        std::cout <<"n:"<<n<<std::endl;
 
         if(n > 0){
-            uint8_t tst;
-            if( (tst = protocol.decode(n)) == PackageType::Position){
+            if( protocol.decode(n)== PackageType::Position){
 
                 Simulator::Schedule(MilliSeconds(20),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
 
@@ -96,8 +97,7 @@ void ExternalMobilityModel::UdpServerThread () {
                 NS_ASSERT_MSG(false, "Wrong Package Type Received");
             }
         } else {
-//            udp_sock->SetDest(8080);
-//            std::cout << "aa: " << udp_sock->Send(x, 12);
+
         }
     }
 }

@@ -10,6 +10,11 @@
 
 #include "udpsockethelper.h"
 
+#define NS3_SERVER_PORT     9090
+#define NS3_NODE_PORT_BASE  7070
+#define CONTROLLER_PORT     9999
+
+
 enum PackageType {
     ACK = 0,
     Position,

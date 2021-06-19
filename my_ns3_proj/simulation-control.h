@@ -9,7 +9,7 @@ namespace ns3{
     class SimulationControl
     {
     public:
-        SimulationControl(uint64_t *watch, uint16_t port_src = 9090, uint16_t port_dest = 9999);
+        SimulationControl(uint64_t *watch, bool feedback = true, uint16_t port_src = NS3_SERVER_PORT, uint16_t port_dest = CONTROLLER_PORT);
         void sendInfo(uint64_t *watch);
         void sendEnd();
     private:
