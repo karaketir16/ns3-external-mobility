@@ -8,14 +8,21 @@
 #define ENCODE_HELPER(Source, Destination) helper((void *)Destination, (void *)&Source, sizeof (Source))
 
 
-
-#define MAX_PKG_LEN 1024
+#include "udpsockethelper.h"
 
 enum PackageType {
     ACK = 0,
     Position,
-    Kill_Thread,
+    Start,
+    Information,
     __MAX__UNDEFINED__
+};
+
+enum StateType {
+    Waiting = 0,
+    Running,
+    End,
+    __MAX__STATE__
 };
 
 
@@ -34,6 +41,9 @@ public:
     double x,y,z;
     uint64_t package_number;
 
+    uint64_t totalReceivedData;
+
+    uint8_t state;
 };
 
 

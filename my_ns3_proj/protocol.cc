@@ -6,15 +6,6 @@ size_t package_type_s = 1;      // package type sector size
 size_t package_number_s = 8;    // package number sector size
 size_t header_s = verify_s + package_type_s + package_number_s;  // Total header size
 
-
-// Total package sizes
-size_t package_sizes[] = {
-    header_s,                      // ACK
-    header_s + 3 * sizeof(double),  // Position
-    header_s                        // Kill_Thread
-};
-
-
 Protocol::Protocol()
 {
 
@@ -54,21 +45,22 @@ PackageType Protocol::decode(size_t len){
     PackageType pkg_type = (PackageType) pkg_type_tmp;
 
     switch (pkg_type) {
+    case Start:
+        break;
+    case Information:
+        iterator += DECODE_HELPER(state, iterator);
+        iterator += DECODE_HELPER(totalReceivedData, iterator);
+        break;
     case PackageType::ACK:
         break;
     case PackageType::Position:
-        if(len != package_sizes[PackageType::Position]) {
-            return PackageType::__MAX__UNDEFINED__;
-        }
 
         iterator += DECODE_HELPER(x, iterator);
         iterator += DECODE_HELPER(y, iterator);
         iterator += DECODE_HELPER(z, iterator);
 
         break;
-    case PackageType::Kill_Thread:
 
-        break;
     case PackageType::__MAX__UNDEFINED__:
         break;
     }
@@ -90,6 +82,12 @@ size_t Protocol::encode(PackageType pkg_type){
     iterator += ENCODE_HELPER(pkg_type_tmp, iterator);
 
     switch (pkg_type) {
+    case Start:
+        break;
+    case Information:
+        iterator += ENCODE_HELPER(state, iterator);
+        iterator += ENCODE_HELPER(totalReceivedData, iterator);
+        break;
     case PackageType::ACK:
         break;
     case PackageType::Position:
@@ -99,11 +97,10 @@ size_t Protocol::encode(PackageType pkg_type){
         iterator += ENCODE_HELPER(z, iterator);
 
         break;
-    case PackageType::Kill_Thread:
-        break;
+
     case PackageType::__MAX__UNDEFINED__:
         break;
     }
 
-    return package_sizes[pkg_type];
+    return iterator - (uint8_t*)buffer;
 }

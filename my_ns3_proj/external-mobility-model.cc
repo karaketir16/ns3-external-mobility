@@ -45,8 +45,8 @@ TypeId ExternalMobilityModel::GetTypeId (void)
 }
 
 void
-ExternalMobilityModel::KILL_ME(){
-    kill_t.test_and_set();
+ExternalMobilityModel::thread_safe_stop(){
+    kill_thread_flag.test_and_set();
     st3->Join();
     std::cout <<"Rest in peace " << st3 << std::endl;
     delete st3;
@@ -54,83 +54,50 @@ ExternalMobilityModel::KILL_ME(){
 
 ExternalMobilityModel::ExternalMobilityModel ()
 {
-    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
+    static unsigned PORT = 7070;
 
-    memset(&servaddr, 0, sizeof(servaddr));
-    memset(&cliaddr, 0, sizeof(cliaddr));
-
-    // Filling server information
-    servaddr.sin_family    = AF_INET; // IPv4
-    servaddr.sin_addr.s_addr = INADDR_ANY;
-
-    static unsigned PORT = 5570;
-    servaddr.sin_port = htons(PORT++);
-
-    // Bind the socket with the server address
-    if ( bind(sockfd, (const struct sockaddr *)&servaddr,
-              sizeof(servaddr)) < 0 )
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
+    udp_port = PORT++;
 
 
     // Create and start udp thread
     st3 = new SystemThread (
                 MakeCallback (&ExternalMobilityModel::UdpServerThread, this));
 
-    Simulator::ScheduleDestroy(&ExternalMobilityModel::KILL_ME, this);
+    Simulator::ScheduleDestroy(&ExternalMobilityModel::thread_safe_stop, this);
     st3->Start();
 }
 
 void ExternalMobilityModel::UdpServerThread () {
-    socklen_t len;
-    int n;
+
+    udp_sock = new UDPSocketHelper();
+
+    udp_sock->Create();
+
+    udp_sock->Bind(udp_port);
+
     while (true) {
-        if(kill_t.test()){
+        if(kill_thread_flag.test()){
             break;
         }
 
-        fd_set set;
-        struct timeval timeout;
+        int n = udp_sock->RecvNotBlock((char *)protocol.buffer, 500);
+//        int n = udp_sock.RecvBlock((char *)protocol.buffer);
+//        std::cout <<"n:"<<n<<std::endl;
 
-
-        /* Initialize the file descriptor set. */
-        FD_ZERO (&set);
-        FD_SET (sockfd, &set);
-
-        /* Initialize the timeout data structure. */
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 1000 * 500;
-
-        /* select returns 0 if timeout, 1 if input available, -1 if error. */
-        int res =  (select (FD_SETSIZE,
-                            &set, NULL, NULL,
-                            &timeout));
-
-        if(res == 1){
-
-            len = sizeof(cliaddr);  //len is value/resuslt
-
-            n = recvfrom(sockfd, (char *)protocol.buffer, MAX_PKG_LEN,
-                         MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-                         &len);
-            if(n < 0){
-                std::cout << "Read Val: " << n << std::endl << std::flush;
-                NS_ASSERT_MSG(false, "what is it?");
-            }
-
+        if(n > 0){
             uint8_t tst;
             if( (tst = protocol.decode(n)) == PackageType::Position){
 
-                Simulator::Schedule(MilliSeconds(10),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
-                //            Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+                Simulator::Schedule(MilliSeconds(20),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+
+                //This is probably more accurate, but somehow breaks the program sometimes.
+                //Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
             } else {
-                NS_ASSERT_MSG(false, "NOT POSSIBLE");
+                NS_ASSERT_MSG(false, "Wrong Package Type Received");
             }
+        } else {
+//            udp_sock->SetDest(8080);
+//            std::cout << "aa: " << udp_sock->Send(x, 12);
         }
     }
 }

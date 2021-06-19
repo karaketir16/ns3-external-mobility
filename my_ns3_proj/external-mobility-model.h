@@ -29,15 +29,7 @@
 
 #include "ns3/system-mutex.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-#include <arpa/inet.h>
+#include "udpsockethelper.h"
 
 #include <vector>
 
@@ -71,16 +63,18 @@ private:
   virtual void DoSetPosition (const Vector &position);
   virtual Vector DoGetVelocity (void) const;
 
-  void KILL_ME();
+  void thread_safe_stop();
 
   void UdpServerThread();
   SystemThread* st3;
 
-  std::atomic_flag kill_t;
+  std::atomic_flag kill_thread_flag;
 
-  int sockfd;
   Protocol protocol;
-  struct sockaddr_in servaddr, cliaddr;
+
+  UDPSocketHelper* udp_sock;
+  int udp_port;
+
   Vector m_position;
 
 };
