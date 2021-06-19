@@ -113,14 +113,6 @@ int main (int argc, char *argv[])
     //80211a, 80211b, 80211n, 2.4g and 5G, 80211ac, 80211ax is also supported.80211p (VANETs, WAVE)
 
 
-
-    //  WifiMacHelper mac;
-    //  mac.SetType ("ns3::AdhocWifiMac");
-    //  //AdhocWifiMac, StaWifiMac, ApWifiMac
-    //  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-    //                                "DataMode", StringValue ("OfdmRate54Mbps"));
-    ////                                "DataMode", StringValue ("DsssRate54Mbps"));
-
     std::string phyMode = "DsssRate11Mbps";
     double txp = 7.5; // dbm
 
@@ -148,13 +140,13 @@ int main (int argc, char *argv[])
     NetDeviceContainer cDevices = wifi.Install (wifiPhy, wifiMac, c);
     //
     NS_LOG_INFO ("Enabling AODV routing on all backbone nodes");
-    //  AodvHelper routing;
+//      AodvHelper routing;
     //  routing.Set("ActiveRouteTimeout", TimeValue(MilliSeconds(100)));
     //AODV protocol is being using FANETs.
 
     //  OlsrHelper routing;
     DsdvHelper routing;
-    routing.Set("PeriodicUpdateInterval", TimeValue(MilliSeconds(500)));
+    routing.Set("PeriodicUpdateInterval", TimeValue(MilliSeconds(250)));
 
     InternetStackHelper internet;
     internet.SetRoutingHelper (routing); // has effect on the next Install ()
