@@ -24,7 +24,8 @@ SimulationControl::SimulationControl(uint64_t *watch, uint16_t port_src, uint16_
         goto back;
     }
 
-    Simulator::Schedule(MilliSeconds(500), &SimulationControl::sendInfo, this, watch);
+    Simulator::Schedule(MilliSeconds(1000), &SimulationControl::sendInfo, this, watch);
+    Simulator::ScheduleDestroy(&SimulationControl::sendEnd, this);
 }
 
 void SimulationControl::sendInfo(uint64_t *watch)
@@ -33,5 +34,12 @@ void SimulationControl::sendInfo(uint64_t *watch)
     p.totalReceivedData = *watch;
     p.state = StateType::Running;
     udp_socket->Send(p.buffer, p.encode(PackageType::Information));
-    Simulator::Schedule(Seconds(1), &SimulationControl::sendInfo, this, watch);
+    Simulator::Schedule(MilliSeconds(500), &SimulationControl::sendInfo, this, watch);
+}
+
+void SimulationControl::sendEnd()
+{
+    Protocol p;
+    p.state = StateType::End;
+    udp_socket->Send(p.buffer, p.encode(PackageType::Information));
 }

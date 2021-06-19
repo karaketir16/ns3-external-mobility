@@ -11,6 +11,7 @@ namespace ns3{
     public:
         SimulationControl(uint64_t *watch, uint16_t port_src = 9090, uint16_t port_dest = 9999);
         void sendInfo(uint64_t *watch);
+        void sendEnd();
     private:
         UDPSocketHelper *udp_socket;
     };
