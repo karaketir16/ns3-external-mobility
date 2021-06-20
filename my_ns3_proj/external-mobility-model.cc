@@ -89,7 +89,7 @@ void ExternalMobilityModel::UdpServerThread () {
         if(n > 0){
             if( protocol.decode(n)== PackageType::Position){
 
-                Simulator::Schedule(MilliSeconds(20),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
+                Simulator::Schedule(MilliSeconds(50),&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));
 
                 //This is probably more accurate, but somehow breaks the program sometimes.
                 //Simulator::ScheduleNow(&ExternalMobilityModel::SetPosition, this, Vector(protocol.x, protocol.y, protocol.z));

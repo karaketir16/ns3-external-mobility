@@ -91,7 +91,7 @@ int main (int argc, char *argv[])
     std::string phyMode ("DsssRate11Mbps");
     std::string saveFile ("DisabledFeedback");
     uint32_t packetSize = 100; // bytes
-    uint32_t interval = 100; // milliseconds
+    uint32_t interval = 50; // milliseconds
     bool feedback = false;
     double txp = 7.5; // dbm
     double simTime = 20; // simulation time
