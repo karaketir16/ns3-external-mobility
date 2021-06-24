@@ -1,12 +1,12 @@
 #include "protocol.h"
 
-#define VERIFY 0xB00F
+#define VERIFY 0xBEEE
 size_t verify_s = 2;            // verify sector size
 size_t package_type_s = 1;      // package type sector size
 size_t package_number_s = 8;    // package number sector size
 size_t header_s = verify_s + package_type_s + package_number_s;  // Total header size
 
-Protocol::Protocol()
+MobilityProtocol::MobilityProtocol()
 {
 
 }
@@ -22,7 +22,7 @@ size_t helper(void *dest, void const * src, size_t len){
 }
 
 
-PackageType Protocol::decode(size_t len){
+PackageType MobilityProtocol::decode(size_t len){
     // len smaller than 3, invalid data
     uint8_t * iterator = (uint8_t*) buffer;
 
@@ -68,7 +68,7 @@ PackageType Protocol::decode(size_t len){
     return pkg_type;
 }
 
-size_t Protocol::encode(PackageType pkg_type){
+size_t MobilityProtocol::encode(PackageType pkg_type){
     // len smaller than 3, invalid data
     uint8_t * iterator = (uint8_t*) buffer;
 

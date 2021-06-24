@@ -64,17 +64,13 @@ private:
   virtual Vector DoGetVelocity (void) const;
 
   void thread_safe_stop();
-
   void UdpServerThread();
+
   SystemThread* st3;
-
   std::atomic_flag kill_thread_flag;
-
-  Protocol protocol;
-
+  MobilityProtocol protocol;
   UDPSocketHelper* udp_sock;
   int udp_port;
-
   Vector m_position;
 
 };

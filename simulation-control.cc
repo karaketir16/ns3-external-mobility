@@ -9,7 +9,7 @@ SimulationControl::SimulationControl(uint64_t *watch, bool feedback, uint16_t po
     udp_socket->Bind(port_src);
     udp_socket->SetDest(port_dest);
 
-    Protocol p;
+    MobilityProtocol p;
 
     int n;
 
@@ -31,7 +31,7 @@ SimulationControl::SimulationControl(uint64_t *watch, bool feedback, uint16_t po
 
 void SimulationControl::sendInfo(uint64_t *watch)
 {
-    Protocol p;
+    MobilityProtocol p;
     p.totalReceivedData = *watch;
     p.state = StateType::Running;
     udp_socket->Send(p.buffer, p.encode(PackageType::Information));
@@ -40,7 +40,7 @@ void SimulationControl::sendInfo(uint64_t *watch)
 
 void SimulationControl::sendEnd()
 {
-    Protocol p;
+    MobilityProtocol p;
     p.state = StateType::End;
     udp_socket->Send(p.buffer, p.encode(PackageType::Information));
 }

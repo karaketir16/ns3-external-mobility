@@ -33,10 +33,10 @@ enum StateType {
 
 // Alternative, cJson
 
-class Protocol
+class MobilityProtocol
 {
 public:
-    Protocol();
+    MobilityProtocol();
 
     PackageType decode(size_t);
     size_t encode(PackageType pkg_type);
