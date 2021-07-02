@@ -175,10 +175,6 @@ int main (int argc, char *argv[])
     MobilityHelper mobility;
     mobility.SetMobilityModel ("ns3::ExternalMobilityModel");
 
-    mobility.SetPositionAllocator ("ns3::RandomBoxPositionAllocator",
-                                   "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"),
-                                   "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"),
-                                   "Z", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
     mobility.Install(server);
     mobility.Install (clients);
 
